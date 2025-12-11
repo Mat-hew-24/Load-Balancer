@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "concurrently \"next dev\" \"cd app/scripts && ./launch-servers.sh\" \"cd app/scripts && nodemon server.js\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "concurrently": "^9.2.1",
     "next": "16.0.8",
     "react": "19.2.1",
     "react-dom": "19.2.1"
@@ -20,6 +21,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.0.8",
+    "nodemon": "^3.0.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
