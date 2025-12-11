@@ -2,6 +2,7 @@ import http from 'http'
 import roundRobinAlgorithm from './roundRobinAlgorithm.js'
 import { createRequire } from 'module'
 import { exec } from 'child_process' // can be used to run bash
+import { AUTO_SCALING_CONFIG } from './config.js'
 const require = createRequire(import.meta.url)
 const serverConfig = require('./config.json')
 
@@ -17,7 +18,9 @@ servers.forEach((server) => {
 })
 
 const killServer = (port) => {
-  console.log(` Killing server ${port} due to high load (≥2 requests/sec)`)
+  console.log(
+    ` Killing server ${port} due to high load (≥${AUTO_SCALING_CONFIG.REQUEST_THRESHOLD} requests/sec)`
+  )
   exec(`pkill -f "singleserver.js ${port}"`, (error) => {
     if (error) {
       console.error(`Error killing server ${port}:`, error.message)
@@ -27,7 +30,11 @@ const killServer = (port) => {
       if (server) server.healthy = false
 
       setTimeout(() => {
-        console.log(`Restarting server ${port} after 15s cooldown`)
+        console.log(
+          `Restarting server ${port} after ${
+            AUTO_SCALING_CONFIG.RESTART_DELAY / 1000
+          }s cooldown`
+        )
         exec(`node singleserver.js ${port} &`, (error) => {
           if (error) {
             console.error(`Error restarting server ${port}:`, error.message)
@@ -35,7 +42,7 @@ const killServer = (port) => {
             console.log(`Server ${port} restarted successfully`)
           }
         })
-      }, 15000)
+      }, AUTO_SCALING_CONFIG.RESTART_DELAY)
     }
   })
 }
@@ -46,7 +53,7 @@ setInterval(() => {
 
   // Check for overloaded servers
   Object.entries(serverStats).forEach(([port, count]) => {
-    if (count >= 2) {
+    if (count >= AUTO_SCALING_CONFIG.REQUEST_THRESHOLD) {
       killServer(parseInt(port))
     }
   })
@@ -55,7 +62,7 @@ setInterval(() => {
   servers.forEach((server) => {
     serverStats[server.port] = 0
   })
-}, 1000)
+}, AUTO_SCALING_CONFIG.STATS_INTERVAL)
 
 const checkHealth = () => {
   servers.forEach((server) => {
@@ -79,7 +86,7 @@ const checkHealth = () => {
   })
 }
 
-setInterval(checkHealth, 2000)
+setInterval(checkHealth, AUTO_SCALING_CONFIG.HEALTH_CHECK_INTERVAL)
 
 const balancer = http.createServer((req, res) => {
   // Add CORS headers for frontend requests
@@ -96,9 +103,25 @@ const balancer = http.createServer((req, res) => {
     res.end()
     return
   }
+
+  // Handle stats endpoint
+  if (req.url === '/stats') {
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(
+      JSON.stringify({
+        serverStats,
+        healthyServers: servers.filter((s) => s.healthy).map((s) => s.port),
+        requestThreshold: AUTO_SCALING_CONFIG.REQUEST_THRESHOLD,
+      })
+    )
+    return
+  }
+
   roundRobinAlgorithm(req, res, servers, serverStats)
 })
 
 balancer.listen(8080, () => {
   console.log('Load Balancer is running on port 8080')
 })
+
+export { serverStats }

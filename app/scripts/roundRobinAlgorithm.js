@@ -9,10 +9,8 @@ const roundRobinAlgorithm = (req, res, servers, serverStats) => {
     res.writeHead(503)
     return res.end('No healthy servers available')
   }
-
   const server = healthyServers[idx % healthyServers.length]
   idx++
-
   // Track request for this server
   if (serverStats && serverStats[server.port] !== undefined) {
     serverStats[server.port]++
