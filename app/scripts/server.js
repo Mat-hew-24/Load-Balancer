@@ -47,7 +47,7 @@ const killServer = (port) => {
   })
 }
 
-// Clear stats every second and check for overloaded servers
+// clearing the stats every second and check for overloaded servers
 setInterval(() => {
   console.log(' Request stats (last 1s):', serverStats)
 
@@ -104,7 +104,7 @@ const balancer = http.createServer((req, res) => {
     return
   }
 
-  // Handle stats endpoint
+  // Handle stats endpoint (hmmm)
   if (req.url === '/stats') {
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(

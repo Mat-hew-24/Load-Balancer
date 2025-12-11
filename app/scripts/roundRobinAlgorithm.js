@@ -6,7 +6,7 @@ const roundRobinAlgorithm = (req, res, servers, serverStats) => {
   const healthyServers = servers.filter((s) => s.healthy)
 
   if (healthyServers.length === 0) {
-    res.writeHead(503)
+    res.writeHead(503) // this is equivalent to res.statusCode = 503
     return res.end('No healthy servers available')
   }
   const server = healthyServers[idx % healthyServers.length]
