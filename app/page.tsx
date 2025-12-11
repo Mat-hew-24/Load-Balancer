@@ -3,14 +3,21 @@
 import { useState, useEffect } from 'react'
 
 export default function Home() {
-  const [output, setOutput] = useState('Output will appear here...')
+  const [output, setOutput] = useState('Waiting for requests...')
   const [isLoading, setIsLoading] = useState(false)
   const [requestHistory, setRequestHistory] = useState<string[]>([])
   const [serverStats, setServerStats] = useState<Record<string, number>>({})
   const [healthyServers, setHealthyServers] = useState<number[]>([])
-  const [requestThreshold, setRequestThreshold] = useState(3) // Default to 3
+  const [requestThreshold, setRequestThreshold] = useState(3)
+  const [currentTime, setCurrentTime] = useState(new Date())
 
-  // Fetch server stats every 500ms
+  // Update current time every second
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  // Fetch server stats every 200ms for real-time feel
   useEffect(() => {
     const fetchStats = async () => {
       try {
@@ -26,7 +33,7 @@ export default function Home() {
       }
     }
 
-    const interval = setInterval(fetchStats, 500)
+    const interval = setInterval(fetchStats, 200) // Faster updates for real-time feel
     return () => clearInterval(interval)
   }, [])
 
@@ -35,13 +42,10 @@ export default function Home() {
     try {
       const response = await fetch('http://localhost:8080')
       const data = await response.text()
-      console.log(data)
       setOutput(data)
-      setRequestHistory((prev) => [...prev, data].slice(-10)) //last 10 req
+      setRequestHistory((prev) => [...prev, data].slice(-10))
     } catch (error) {
-      setOutput(
-        'Error: Could not connect to load balancer. Make sure servers are running.'
-      )
+      setOutput('ERROR: Load balancer connection failed')
       console.error(error)
     }
     setIsLoading(false)
@@ -49,136 +53,166 @@ export default function Home() {
 
   const clearHistory = () => {
     setRequestHistory([])
-    setOutput('Output will appear here...')
+    setOutput('Terminal cleared.')
+  }
+
+  const getServerStatusSymbol = (port: number) => {
+    const requestCount = serverStats[port] || 0
+    const isHealthy = healthyServers.includes(port)
+    const isOverloaded = requestCount >= requestThreshold
+
+    if (isOverloaded) return '🔴 OVERLOAD'
+    if (isHealthy) return '🟢 ONLINE'
+    return '⚪ OFFLINE'
+  }
+
+  const getBarWidth = (count: number) => {
+    const maxCount = Math.max(...Object.values(serverStats), requestThreshold)
+    return Math.min((count / Math.max(maxCount, 1)) * 100, 100)
   }
 
   return (
-    <div className='min-h-screen bg-gray-100 p-8'>
-      <div className='max-w-2xl mx-auto bg-white rounded-lg shadow-md p-6'>
-        <h1 className='text-2xl font-bold text-gray-800 mb-6 text-center'>
-          Task 4 - Round Robin Load Balancer
-        </h1>
+    <div className='min-h-screen bg-black text-green-400 font-mono p-4'>
+      {/* Terminal Header */}
+      <div className='border border-green-400 rounded-t-lg bg-gray-900 p-2 text-center'>
+        <span className='text-green-300'>●●●</span>
+        <span className='ml-4 text-green-400'>
+          GDSC-LoadBalancer-Terminal v1.0
+        </span>
+        <span className='ml-4 text-green-300 text-sm'>
+          {currentTime.toLocaleTimeString()}
+        </span>
+      </div>
 
-        <div className='flex gap-4 mb-6'>
-          <button
-            onClick={handleRoundRobinRequest}
-            disabled={isLoading}
-            className='flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 ease-in-out transform hover:scale-105 disabled:transform-none'
-          >
-            {isLoading ? 'Loading...' : 'Send Round Robin Request'}
-          </button>
-
-          <button
-            onClick={clearHistory}
-            className='bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 ease-in-out'
-          >
-            Clear
-          </button>
-        </div>
-
-        <div className='bg-gray-50 border-2 border-gray-200 rounded-lg p-4 mb-6'>
-          <h3 className='text-lg font-semibold text-gray-700 mb-3'>
-            Current Response:
-          </h3>
-          <div className='bg-white border border-gray-300 rounded p-3 min-h-[60px] flex items-center'>
-            <p
-              className={`${
-                output.includes('Error')
-                  ? 'text-red-600'
-                  : output.includes('PORT')
-                  ? 'text-green-600 font-mono'
-                  : 'text-gray-600 italic'
-              }`}
-            >
-              {output}
-            </p>
+      {/* Terminal Body */}
+      <div className='border-x border-b border-green-400 rounded-b-lg bg-black p-4'>
+        {/* Title */}
+        <div className='mb-4'>
+          <div className='text-green-300 text-xl'>
+            ╔══ ROUND ROBIN LOAD BALANCER MONITOR ══╗
+          </div>
+          <div className='text-green-400 text-sm mt-1'>
+            │ Auto-scaling threshold: {requestThreshold} req/s │
+          </div>
+          <div className='text-green-300'>
+            ╚═══════════════════════════════════════╝
           </div>
         </div>
 
-        {/* Server Stats */}
-        <div className='bg-gray-50 border-2 border-gray-200 rounded-lg p-4 mb-6'>
-          <h3 className='text-lg font-semibold text-gray-700 mb-3'>
-            Real-time Server Stats (Requests/Second):
-          </h3>
-          <div className='grid grid-cols-5 gap-2'>
+        {/* Control Panel */}
+        <div className='mb-4 p-3 border border-green-600 rounded'>
+          <div className='text-green-300 mb-2'>┌─ CONTROL PANEL ─┐</div>
+          <div className='flex gap-4'>
+            <button
+              onClick={handleRoundRobinRequest}
+              disabled={isLoading}
+              className='bg-green-800 hover:bg-green-700 disabled:bg-gray-700 text-green-100 px-4 py-2 border border-green-600 rounded transition-colors'
+            >
+              {isLoading ? '[SENDING...]' : '[SEND REQUEST]'}
+            </button>
+            <button
+              onClick={clearHistory}
+              className='bg-red-800 hover:bg-red-700 text-red-100 px-4 py-2 border border-red-600 rounded transition-colors'
+            >
+              [CLEAR LOG]
+            </button>
+          </div>
+        </div>
+
+        {/* Server Stats with Bar Graph */}
+        <div className='mb-4 p-3 border border-green-600 rounded'>
+          <div className='text-green-300 mb-2'>
+            ┌─ REAL-TIME SERVER STATS ─┐
+          </div>
+          <div className='space-y-2'>
             {[5001, 5002, 5003, 5004, 5005].map((port) => {
               const requestCount = serverStats[port] || 0
-              const isHealthy = healthyServers.includes(port)
+              const barWidth = getBarWidth(requestCount)
               const isOverloaded = requestCount >= requestThreshold
+              const isHealthy = healthyServers.includes(port)
 
               return (
-                <div
-                  key={port}
-                  className={`p-3 rounded border-2 text-center transition-colors ${
-                    isOverloaded
-                      ? 'bg-red-100 border-red-300 text-red-800'
-                      : isHealthy
-                      ? 'bg-green-100 border-green-300 text-green-800'
-                      : 'bg-gray-100 border-gray-300 text-gray-600'
-                  }`}
-                >
-                  <div className='text-sm font-semibold'>Port {port}</div>
-                  <div className='text-lg font-bold'>{requestCount}</div>
-                  <div className='text-xs'>
-                    {isOverloaded
-                      ? '⚡ OVERLOAD'
-                      : isHealthy
-                      ? '✅ Healthy'
-                      : '❌ Down'}
+                <div key={port} className='flex items-center text-sm'>
+                  <div className='w-16 text-green-400'>:{port}</div>
+                  <div className='w-8 text-right text-green-300'>
+                    {requestCount}
+                  </div>
+                  <div className='flex-1 mx-2 bg-gray-800 rounded h-4 relative overflow-hidden'>
+                    <div
+                      className={`h-full transition-all duration-300 ${
+                        isOverloaded
+                          ? 'bg-red-500'
+                          : isHealthy
+                          ? 'bg-green-500'
+                          : 'bg-gray-600'
+                      }`}
+                      style={{ width: `${barWidth}%` }}
+                    />
+                    {requestCount > 0 && (
+                      <div className='absolute inset-0 flex items-center justify-center text-xs text-black font-bold'>
+                        {requestCount}
+                      </div>
+                    )}
+                  </div>
+                  <div className='w-24 text-xs'>
+                    {getServerStatusSymbol(port)}
                   </div>
                 </div>
               )
             })}
           </div>
-          <div className='mt-3 text-xs text-gray-500 text-center'>
-            Servers with ≥{requestThreshold} requests/sec will be restarted
-            automatically
+          <div className='mt-2 text-xs text-green-600'>
+            │ Threshold: {requestThreshold} req/s │ Update: 200ms │
+            Auto-restart: 15s │
+          </div>
+        </div>
+
+        {/* Current Response */}
+        <div className='mb-4 p-3 border border-green-600 rounded'>
+          <div className='text-green-300 mb-2'>┌─ LAST RESPONSE ─┐</div>
+          <div className='bg-gray-900 p-2 rounded border'>
+            <span className='text-green-400'>$ </span>
+            <span
+              className={`${
+                output.includes('ERROR')
+                  ? 'text-red-400'
+                  : output.includes('PORT')
+                  ? 'text-green-400'
+                  : 'text-yellow-400'
+              }`}
+            >
+              {output}
+            </span>
           </div>
         </div>
 
         {/* Request History */}
         {requestHistory.length > 0 && (
-          <div className='bg-gray-50 border-2 border-gray-200 rounded-lg p-4'>
-            <h3 className='text-lg font-semibold text-gray-700 mb-3'>
-              Request History (Last {requestHistory.length} requests - newest
-              first):
-            </h3>
-            <div className='space-y-2 max-h-60 overflow-y-auto'>
+          <div className='mb-4 p-3 border border-green-600 rounded'>
+            <div className='text-green-300 mb-2'>
+              ┌─ REQUEST LOG ({requestHistory.length}/10) ─┐
+            </div>
+            <div className='bg-gray-900 p-2 rounded border max-h-40 overflow-y-auto'>
               {requestHistory
                 .slice()
                 .reverse()
                 .map((response, index) => (
-                  <div
-                    key={index}
-                    className='bg-white border border-gray-300 rounded p-2 text-sm'
-                  >
-                    <span className='text-gray-500 mr-2'>#{index + 1}:</span>
-                    <span className='font-mono text-green-600'>{response}</span>
+                  <div key={index} className='text-sm'>
+                    <span className='text-green-600'>
+                      [{String(index + 1).padStart(2, '0')}]
+                    </span>
+                    <span className='text-green-400'> → {response}</span>
                   </div>
                 ))}
             </div>
           </div>
         )}
 
-        {/* Instructions */}
-        <div className='mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg'>
-          <h4 className='font-semibold text-blue-800 mb-2'>Instructions:</h4>
-          <ol className='text-sm text-blue-700 space-y-1 list-decimal list-inside'>
-            <li>
-              Make sure the load balancer and servers are running (use the
-              launch scripts)
-            </li>
-            <li>
-              Click &quot;Send Round Robin Request&quot; to test the load
-              balancing
-            </li>
-            <li>
-              Each click will route to the next server in round-robin fashion
-            </li>
-            <li>
-              Watch the PORT numbers change to see the round-robin in action!
-            </li>
-          </ol>
+        {/* System Info */}
+        <div className='text-xs text-green-600 border-t border-green-800 pt-2'>
+          │ Status: Load Balancer Active │ Servers: 5 │ Algorithm: Round Robin │
+          <br />│ Monitoring: Real-time │ Auto-scaling: Enabled │ Health Check:
+          2s │
         </div>
       </div>
     </div>

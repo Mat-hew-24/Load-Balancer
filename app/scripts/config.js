@@ -1,7 +1,7 @@
 // Auto-scaling configuration
 export const AUTO_SCALING_CONFIG = {
   // Threshold for requests per second before killing a server
-  REQUEST_THRESHOLD: 3,
+  REQUEST_THRESHOLD: 2,
 
   // Cooldown period in milliseconds before restarting a killed server
   RESTART_DELAY: 15000,
