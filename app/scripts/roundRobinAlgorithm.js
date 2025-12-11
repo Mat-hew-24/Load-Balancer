@@ -2,7 +2,7 @@ import httpProxy from 'http-proxy'
 const proxy = httpProxy.createProxyServer({})
 let idx = 0
 
-const roundRobinAlgorithm = (req, res, servers) => {
+const roundRobinAlgorithm = (req, res, servers, serverStats) => {
   const healthyServers = servers.filter((s) => s.healthy)
 
   if (healthyServers.length === 0) {
@@ -12,6 +12,11 @@ const roundRobinAlgorithm = (req, res, servers) => {
 
   const server = healthyServers[idx % healthyServers.length]
   idx++
+
+  // Track request for this server
+  if (serverStats && serverStats[server.port] !== undefined) {
+    serverStats[server.port]++
+  }
 
   proxy.web(
     req,
