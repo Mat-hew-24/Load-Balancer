@@ -72,7 +72,7 @@ export default function Home() {
 
   return (
     <div className='min-h-screen relative bg-black text-green-400 font-mono p-4'>
-      {/* LetterGlitch Background */}
+      {/* LetterGlitch Background from reactbits */}
       <div className='absolute inset-0 opacity-40'>
         <LetterGlitch
           glitchColors={['#15803d', '#22c55e', '#4ade80', '#84cc16', '#65a30d']}
@@ -84,9 +84,8 @@ export default function Home() {
         />
       </div>
 
-      {/* Terminal Content - positioned above background */}
+      {/* Terminal Content is positioned above background */}
       <div className='relative opacity-80 z-10'>
-        {/* Terminal Header */}
         <div className='border border-green-400 rounded-t-lg bg-gray-900/90 backdrop-blur-sm p-2 text-center'>
           <span className='text-green-300'>●●●</span>
           <span className='ml-4 text-green-400'>
@@ -97,9 +96,7 @@ export default function Home() {
           </span>
         </div>
 
-        {/* Terminal Body */}
         <div className='border-x border-b border-green-400 rounded-b-lg bg-black/90 backdrop-blur-sm p-4'>
-          {/* Title */}
           <div className='mb-4'>
             <div className='text-green-300 text-xl'>
               ROUND ROBIN LOAD BALANCER MONITOR
@@ -110,7 +107,6 @@ export default function Home() {
             <div className='text-green-300'></div>
           </div>
 
-          {/* Control Panel */}
           <div className='mb-4 p-3 border border-green-600 rounded bg-black/70'>
             <div className='text-green-300 mb-2'>┌─ CONTROL PANEL ─┐</div>
             <div className='flex gap-4'>
