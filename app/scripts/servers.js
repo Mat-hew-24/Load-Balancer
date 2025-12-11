@@ -3,7 +3,7 @@ const serverConfig = require('./config.json').servers
 
 const createServer = (host, port) => {
   const server = http.createServer((req, res) => {
-    res.write(200)
+    res.statusCode = 200
     res.end(`Server response from PORT ${port}`)
   })
 
