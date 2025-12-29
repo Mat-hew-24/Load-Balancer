@@ -1,9 +1,10 @@
 {
   "name": "task4",
   "version": "0.1.0",
+  "type": "module",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"next dev\" \"cd app/scripts && ./launch-servers.sh\" \"cd app/scripts && nodemon server.js\"",
+    "dev": "concurrently \"next dev\" \"nodemon app/scripts/server.js\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

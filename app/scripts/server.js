@@ -1,69 +1,99 @@
 import http from 'http'
 import roundRobinAlgorithm from './roundRobinAlgorithm.js'
 import { createRequire } from 'module'
-import { exec } from 'child_process' // can be used to run bash
+import { spawn } from 'child_process'
 import { AUTO_SCALING_CONFIG } from './config.js'
+
 const require = createRequire(import.meta.url)
 const serverConfig = require('./config.json')
 
+/* -------------------- SERVER REGISTRY -------------------- */ //STATE OF EACH SERVER IS TRACKED
 const servers = serverConfig.servers.map((server) => ({
   ...server,
   healthy: true,
 }))
 
-// Stats tracking for auto-scaling
-let serverStats = {}
+const serverProcesses = new Map()
+const cooldownServers = new Set() // COOLDOWN AND RESTARTING OF SERVERS...
+/* -------------------- STATS -------------------- */
+const serverStats = {}
 servers.forEach((server) => {
   serverStats[server.port] = 0
 })
+/* -------------------- PROCESS CONTROL -------------------- */
 
-const killServer = (port) => {
-  console.log(
-    ` Killing server ${port} due to high load (≥${AUTO_SCALING_CONFIG.REQUEST_THRESHOLD} requests/sec)`
-  )
-  exec(`pkill -f "singleserver.js ${port}"`, (error) => {
-    if (error) {
-      console.error(`Error killing server ${port}:`, error.message)
-    } else {
-      console.log(`Server ${port} killed successfully`)
-      const server = servers.find((s) => s.port === port)
-      if (server) server.healthy = false
+const startServer = (port) => {
+  if (serverProcesses.has(port)) return
 
-      setTimeout(() => {
-        console.log(
-          `Restarting server ${port} after ${
-            AUTO_SCALING_CONFIG.RESTART_DELAY / 1000
-          }s cooldown`
-        )
-        exec(`node singleserver.js ${port} &`, (error) => {
-          if (error) {
-            console.error(`Error restarting server ${port}:`, error.message)
-          } else {
-            console.log(`Server ${port} restarted successfully`)
-          }
-        })
-      }, AUTO_SCALING_CONFIG.RESTART_DELAY)
-    }
+  console.log(`Starting server on port ${port}`)
+
+  const child = spawn('node', ['app/scripts/singleserver.js', port], {
+    stdio: 'inherit',
+  })
+
+  serverProcesses.set(port, child)
+
+  const server = servers.find((s) => s.port === port)
+  if (server) server.healthy = true
+
+  child.on('exit', (code, signal) => {
+    console.log(`Server ${port} exited (code=${code}, signal=${signal})`)
+    serverProcesses.delete(port)
   })
 }
 
-// clearing the stats every second and check for overloaded servers
-setInterval(() => {
-  console.log(' Request stats (last 1s):', serverStats)
+const killServer = (port) => {
+  if (cooldownServers.has(port)) return // Already cooling down
 
-  // Check for overloaded servers
+  const proc = serverProcesses.get(port)
+  if (!proc) {
+    console.log(`Server ${port} already stopped`)
+    return
+  }
+
+  console.log(
+    `Killing server ${port} due to high load (≥${AUTO_SCALING_CONFIG.REQUEST_THRESHOLD} req/s)`
+  )
+
+  cooldownServers.add(port) // start cooldown
+  proc.kill('SIGTERM')
+  serverProcesses.delete(port)
+
+  const server = servers.find((s) => s.port === port)
+  if (server) server.healthy = false
+
+  setTimeout(() => {
+    console.log(
+      `Restarting server ${port} after ${
+        AUTO_SCALING_CONFIG.RESTART_DELAY / 1000
+      }s cooldown`
+    )
+    startServer(port)
+    cooldownServers.delete(port) // cooldown finished
+  }, AUTO_SCALING_CONFIG.RESTART_DELAY)
+}
+
+/* -------------------- INITIAL START -------------------- */
+
+servers.forEach(({ port }) => startServer(port))
+
+/* -------------------- AUTO-SCALING -------------------- */
+
+setInterval(() => {
+  console.log('Request stats (last 1s):', serverStats)
+
   Object.entries(serverStats).forEach(([port, count]) => {
     if (count >= AUTO_SCALING_CONFIG.REQUEST_THRESHOLD) {
-      killServer(parseInt(port))
+      killServer(Number(port))
     }
   })
 
-  // Reset stats
   servers.forEach((server) => {
     serverStats[server.port] = 0
   })
 }, AUTO_SCALING_CONFIG.STATS_INTERVAL)
 
+/* -------------------- HEALTH CHECK -------------------- */
 const checkHealth = () => {
   servers.forEach((server) => {
     const options = {
@@ -74,8 +104,7 @@ const checkHealth = () => {
     }
 
     const req = http.get(options, (res) => {
-      const alive = res.statusCode === 200
-      server.healthy = alive
+      server.healthy = res.statusCode === 200
     })
 
     req.on('error', () => {
@@ -85,11 +114,9 @@ const checkHealth = () => {
     req.end()
   })
 }
-
 setInterval(checkHealth, AUTO_SCALING_CONFIG.HEALTH_CHECK_INTERVAL)
-
+/* -------------------- LOAD BALANCER -------------------- */
 const balancer = http.createServer((req, res) => {
-  // Add CORS headers for frontend requests
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader(
     'Access-Control-Allow-Methods',
@@ -97,14 +124,12 @@ const balancer = http.createServer((req, res) => {
   )
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 
-  // Handle preflight requests
   if (req.method === 'OPTIONS') {
     res.writeHead(200)
     res.end()
     return
   }
 
-  // Handle stats endpoint (hmmm)
   if (req.url === '/stats') {
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(
