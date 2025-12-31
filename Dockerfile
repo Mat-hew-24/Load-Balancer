@@ -17,3 +17,6 @@ EXPOSE 3000 8080
 
 # Start both Next.js dev server and load balancer
 CMD sh -c "npm run dev"
+
+
+#to run =>  docker run -p 3000:3000 -p 8080:8080 fullstack-one-container
