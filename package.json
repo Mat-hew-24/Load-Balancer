@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"next dev\" \"nodemon app/scripts/server.js\"",
+    "dev": "concurrently \"next dev -H 0.0.0.0 -p 3000\" \"nodemon app/scripts/server.js\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

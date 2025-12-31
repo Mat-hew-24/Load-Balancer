@@ -145,7 +145,7 @@ const balancer = http.createServer((req, res) => {
   roundRobinAlgorithm(req, res, servers, serverStats)
 })
 
-balancer.listen(8080, () => {
+balancer.listen(8080, '0.0.0.0', () => {
   console.log('Load Balancer is running on port 8080')
 })
 
