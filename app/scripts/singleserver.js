@@ -1,5 +1,8 @@
 const http = require('http')
 
+const DEBUG_LOGGING = false // Toggle to true to enable logs
+const log = (...args) => DEBUG_LOGGING && console.log(...args)
+
 const port = process.argv[2] || 5001 // pass port as argument
 const host = 'localhost'
 
@@ -9,5 +12,5 @@ const server = http.createServer((req, res) => {
 })
 
 server.listen(port, host, () => {
-  console.log(`Server started at http://${host}:${port} (PID: ${process.pid})`)
+  log(`Server started at http://${host}:${port} (PID: ${process.pid})`)
 })

@@ -7,6 +7,10 @@ import { AUTO_SCALING_CONFIG } from './config.js'
 const require = createRequire(import.meta.url)
 const serverConfig = require('./config.json')
 
+// Debug logger - toggle via AUTO_SCALING_CONFIG.DEBUG_LOGGING
+const log = (...args) =>
+  AUTO_SCALING_CONFIG.DEBUG_LOGGING && console.log(...args)
+
 /* -------------------- SERVER REGISTRY -------------------- */ //STATE OF EACH SERVER IS TRACKED
 const servers = serverConfig.servers.map((server) => ({
   ...server,
@@ -25,7 +29,7 @@ servers.forEach((server) => {
 const startServer = (port) => {
   if (serverProcesses.has(port)) return
 
-  console.log(`Starting server on port ${port}`)
+  log(`Starting server on port ${port}`)
 
   const child = spawn('node', ['app/scripts/singleserver.js', port], {
     stdio: 'inherit',
@@ -37,7 +41,7 @@ const startServer = (port) => {
   if (server) server.healthy = true
 
   child.on('exit', (code, signal) => {
-    console.log(`Server ${port} exited (code=${code}, signal=${signal})`)
+    log(`Server ${port} exited (code=${code}, signal=${signal})`)
     serverProcesses.delete(port)
   })
 }
@@ -47,11 +51,11 @@ const killServer = (port) => {
 
   const proc = serverProcesses.get(port)
   if (!proc) {
-    console.log(`Server ${port} already stopped`)
+    log(`Server ${port} already stopped`)
     return
   }
 
-  console.log(
+  log(
     `Killing server ${port} due to high load (≥${AUTO_SCALING_CONFIG.REQUEST_THRESHOLD} req/s)`
   )
 
@@ -63,7 +67,7 @@ const killServer = (port) => {
   if (server) server.healthy = false
 
   setTimeout(() => {
-    console.log(
+    log(
       `Restarting server ${port} after ${
         AUTO_SCALING_CONFIG.RESTART_DELAY / 1000
       }s cooldown`
@@ -80,7 +84,7 @@ servers.forEach(({ port }) => startServer(port))
 /* -------------------- AUTO-SCALING -------------------- */
 
 setInterval(() => {
-  console.log('Request stats (last 1s):', serverStats)
+  log('Request stats (last 1s):', serverStats)
 
   Object.entries(serverStats).forEach(([port, count]) => {
     if (count >= AUTO_SCALING_CONFIG.REQUEST_THRESHOLD) {
@@ -146,7 +150,7 @@ const balancer = http.createServer((req, res) => {
 })
 
 balancer.listen(8080, '0.0.0.0', () => {
-  console.log('Load Balancer is running on port 8080')
+  log('Load Balancer is running on port 8080')
 })
 
 export { serverStats }

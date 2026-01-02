@@ -1,5 +1,8 @@
 // Auto-scaling configuration
 export const AUTO_SCALING_CONFIG = {
+  // Toggle console logging (set to true to enable logs)
+  DEBUG_LOGGING: false,
+
   // Threshold for requests per second before killing a server
   REQUEST_THRESHOLD: 2,
 
