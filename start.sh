@@ -25,3 +25,9 @@ echo "NGINX PID: $NGINX_PID"
 
 wait $BACKEND_PID
 wait $NGINX_PID
+
+
+
+#run via docker
+#  docker build -t load-balancer-unified .
+#  docker run -d --name load-balancer-unified-test -p 80:80 -p 3000:3000 -p 8080:8080 load-balancer-unified

@@ -12,7 +12,7 @@ A demonstration load balancer with round-robin distribution, health checks, and 
 
 ## Architecture
 
-```
+```vim
 Client → nginx (port 80) → Load Balancer (port 8080) → Backend Servers (ports 5001-5005)
                                       ↓
                               Next.js Dashboard (port 3000)
@@ -27,16 +27,10 @@ nginx acts as a reverse proxy, receiving client requests on port 80 and forwardi
 - Node.js
 - npm
 
-### Installation
-
-```bash
-npm install
-```
-
 ### Running the Application
 
 ```bash
-npm run dev
+bash start.sh
 ```
 
 This starts:
@@ -44,6 +38,30 @@ This starts:
 - Next.js dashboard on `http://localhost:3000`
 - Load balancer on `http://localhost:8080`
 - 5 backend servers on ports 5001-5005
+
+## Docker
+
+Use the unified Docker image to run everything (Next.js, load balancer, and NGINX) in one container.
+
+### Build
+
+```bash
+docker build -t load-balancer-unified .
+```
+
+### Run
+
+```bash
+docker run -d --name load-balancer-unified-test -p 80:80 -p 3000:3000 -p 8080:8080 load-balancer-unified
+```
+
+### Access
+
+- Frontend (Next.js dev): <http://localhost:3000>
+- Reverse proxy (NGINX → LB): <http://localhost/>
+- Load balancer API (direct): <http://localhost:8080>
+
+The container exposes ports 80 (NGINX), 3000 (Next.js), and 8080 (load balancer). Publishing `-p 3000:3000` ensures you can access the frontend directly.
 
 ## Configuration
 
